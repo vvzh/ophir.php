@@ -308,6 +308,7 @@ class Ophir
 						} else {
 							$translation_table["text:list"] = "ul";
 						}
+						// No break statement intended
 
 					default:
 						if (array_key_exists($xml->name, $translation_table)) {
