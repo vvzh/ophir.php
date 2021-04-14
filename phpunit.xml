@@ -2,7 +2,7 @@
 <phpunit colors="true">
   <testsuites>
     <testsuite name="Ophir.php">
-      <directory>Tests/Ophir.php</directory>
+      <directory>Tests/OphirTest.php</directory>
     </testsuite>
   </testsuites>
   <filter>
