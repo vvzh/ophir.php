@@ -115,8 +115,10 @@ class Ophir
 		$translation_table['text:line-break'] = 'br';
 
 		$odtStyles = array();
+		$skip_subtree = false;
 
-		while ($xml->read()) {
+		while (($skip_subtree && $xml->next()) || $xml->read()) {
+			$skip_subtree = false;
 			$opened_tags = array();//This array will contain the HTML tags opened in every iteration
 
 			if ($xml->nodeType === XMLReader::END_ELEMENT) {//Handle a closing tag
@@ -146,7 +148,7 @@ class Ophir
 						break;
 					case "text:h"://Title
 						if ($this->configuration[Ophir::HEADINGS] === Ophir::NONE) {
-							$xml->next();
+							$skip_subtree = true;
 							break;
 						}
 						elseif ($this->configuration[Ophir::HEADINGS] === Ophir::SIMPLE) break;
@@ -169,7 +171,7 @@ class Ophir
 
 					case "text:a":
 						if ($this->configuration[Ophir::LINK] === Ophir::NONE) {
-							$xml->next();
+							$skip_subtree = true;
 							break;
 						}
 						elseif ($this->configuration[Ophir::LINK] === Ophir::SIMPLE) break;
@@ -180,7 +182,7 @@ class Ophir
 
 					case "draw:image":
 						if ($this->configuration[Ophir::IMAGE] === Ophir::NONE) {
-							$xml->next();
+							$skip_subtree = true;
 							break;
 						}
 						elseif ($this->configuration[Ophir::IMAGE] === Ophir::SIMPLE) break;
@@ -230,7 +232,7 @@ class Ophir
 						break;
 					case "text:note":
 						if ($this->configuration[Ophir::FOOTNOTE] === Ophir::NONE) {
-							$xml->next();
+							$skip_subtree = true;
 							break;
 						}
 						elseif ($this->configuration[Ophir::FOOTNOTE] === Ophir::SIMPLE) break;
@@ -270,7 +272,7 @@ class Ophir
 
 					case "office:annotation":
 						if ($this->configuration[Ophir::ANNOTATION] === Ophir::NONE) {
-							$xml->next();
+							$skip_subtree = true;
 							break;
 						}
 						elseif ($this->configuration[Ophir::ANNOTATION] === Ophir::SIMPLE) break;
@@ -278,8 +280,14 @@ class Ophir
 						$annotation_content = "";
 						$annotation_creator = "Anonymous";
 						$annotation_date = "";
+						$skip_annotation_subtree = false;
 						do {
-							$xml->read();
+							if ($skip_annotation_subtree) {
+								$xml->next();
+							} else {
+								$xml->read();
+							}
+							$skip_annotation_subtree = false;
 							if ($xml->name === "dc:creator" &&
 									$xml->nodeType == XMLReader::ELEMENT)
 								$annotation_creator = $xml->readString();
@@ -289,7 +297,7 @@ class Ophir
 							}
 							elseif ($xml->nodeType === XMLReader::ELEMENT) {
 								$annotation_content .= $xml->readString();
-								$xml->next();
+								$skip_annotation_subtree = true;
 							}
 						} while (!($xml->name === "office:annotation" &&
 							$xml->nodeType === XMLReader::END_ELEMENT));//End of the note
@@ -313,7 +321,7 @@ class Ophir
 					default:
 						if (array_key_exists($xml->name, $translation_table)) {
 							if ($translation_table[$xml->name]===FALSE) {
-								$xml->next();
+								$skip_subtree = true;
 								break;
 							}
 							$tag = explode(" ", $translation_table[$xml->name], 1);
