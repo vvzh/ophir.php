@@ -183,7 +183,7 @@ class Ophir
 							$xml->next();
 							break;
 						}
-						elseif ($this->configuration[Ophir::IMAGE] === Ophir::NONE) break;
+						elseif ($this->configuration[Ophir::IMAGE] === Ophir::SIMPLE) break;
 
 						$image_file = 'zip://' . $odt_file . '#' . $xml->getAttribute("xlink:href");
 						if (isset($this->configuration[Ophir::IMAGEFOLDER]) &&
