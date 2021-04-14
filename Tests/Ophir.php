@@ -10,10 +10,10 @@ include("src/Ophir.php");
 date_default_timezone_set("Europe/Berlin");
 
 
-class OphirTest extends \PHPUnit_Framework_TestCase{
+class OphirTest extends \PHPUnit\Framework\TestCase{
 
-	function __construct(){
-		$this->ophir = new \lovasoa\Ophir();
+	protected function setUp(): void {
+		$this->ophir = new Ophir();
 
 		// enable everything
 		$this->ophir->setConfiguration(Ophir::HEADINGS,		Ophir::ALL);
@@ -30,22 +30,23 @@ class OphirTest extends \PHPUnit_Framework_TestCase{
 		// ignore line breaks in tests
 		$this->html = str_replace(array("\r", "\n"), "", $this->html);
 	}
+
 	public function testSimpleText(){
-		$this->assertContains("<p>This is a simple text Paragraph</p>",$this->html, "testing simple Text");
+		$this->assertStringContainsString("<p>This is a simple text Paragraph</p>",$this->html, "testing simple Text");
 	}
 
 	public function testTableOfContents(){
-		$this->assertContains("Table of Contents",$this->html);
+		$this->assertStringContainsString("Table of Contents",$this->html);
 	}
 
 	public function testFormattedText(){
-		$this->assertContains("This is a <strong>bold text</strong>",	$this->html, "testing bold Text");
-		$this->assertContains("This is a <em>italic text</em>",			$this->html, "testing italic Text");
-		$this->assertContains("This is a <u>underlined text</u>",		$this->html, "testing underlined Text");
+		$this->assertStringContainsString("This is a <strong>bold text</strong>",	$this->html, "testing bold Text");
+		$this->assertStringContainsString("This is a <em>italic text</em>",			$this->html, "testing italic Text");
+		$this->assertStringContainsString("This is a <u>underlined text</u>",		$this->html, "testing underlined Text");
 
-		$this->assertContains("This is a <em><strong>bold italic text</strong></em>",	$this->html, "testing bold italic Text");
-		$this->assertContains("This is a <strong><u>bold underlined text</u></strong>",	$this->html, "testing bold underlined Text");
-		$this->assertContains("This is a <em><u>italic underlined text</u></em>",		$this->html, "testing italic underlined Text");
+		$this->assertStringContainsString("This is a <em><strong>bold italic text</strong></em>",	$this->html, "testing bold italic Text");
+		$this->assertStringContainsString("This is a <strong><u>bold underlined text</u></strong>",	$this->html, "testing bold underlined Text");
+		$this->assertStringContainsString("This is a <em><u>italic underlined text</u></em>",		$this->html, "testing italic underlined Text");
 	}
 
 	public function testOrderedLists(){
@@ -55,7 +56,7 @@ class OphirTest extends \PHPUnit_Framework_TestCase{
 						<li><p>such number</p></li>
 					</ol>";
 		$toTest = str_replace(array("\n","\r","\t"), "", $toTest);
-		$this->assertContains($toTest,	$this->html, "testing ordered Lists");
+		$this->assertStringContainsString($toTest,	$this->html, "testing ordered Lists");
 	}
 
 	public function testUnorderedLists(){
@@ -65,29 +66,29 @@ class OphirTest extends \PHPUnit_Framework_TestCase{
 						<li><p>much messy</p></li>
 					</ul>";
 		$toTest = str_replace(array("\n","\r","\t"), "", $toTest);
-		$this->assertContains($toTest,	$this->html, "testing ordered Lists");
+		$this->assertStringContainsString($toTest,	$this->html, "testing ordered Lists");
 	}
 
 	public function testImage(){
-		$this->assertContains(base64_encode(file_get_contents(__DIR__."/image.jpg")),$this->html);
+		$this->assertStringContainsString(base64_encode(file_get_contents(__DIR__."/image.jpg")),$this->html);
 	}
 
 	public function testLink(){
-		$this->assertContains('This is a <a href="https://github.com/lovasoa/ophir.php">link</a>',$this->html);
+		$this->assertStringContainsString('This is a <a href="https://github.com/lovasoa/ophir.php">link</a>',$this->html);
 	}
 
 	public function testAnnotation(){
-		$this->assertContains('This is a annotation',$this->html);
+		$this->assertStringContainsString('This is a annotation',$this->html);
 	}
 
 	public function testFootnote(){
-		$this->assertContains('This is a footnote', $this->html);
+		$this->assertStringContainsString('This is a footnote', $this->html);
 	}
 
 	public function testHeadings(){
-		$this->assertContains("<h1>This is a h1</h1>",$this->html,"testing h1");
-		$this->assertContains("<h2>This is a h2</h2>",$this->html,"testing h2");
-		$this->assertContains("<h3>This is a h3</h3>",$this->html,"testing h3");
+		$this->assertStringContainsString("<h1>This is a h1</h1>",$this->html,"testing h1");
+		$this->assertStringContainsString("<h2>This is a h2</h2>",$this->html,"testing h2");
+		$this->assertStringContainsString("<h3>This is a h3</h3>",$this->html,"testing h3");
 	}
 
 	public function testTables(){
@@ -110,7 +111,7 @@ class OphirTest extends \PHPUnit_Framework_TestCase{
 					</table>";
 		$toTest = str_replace(array("\n","\r","\t"), "", $toTest);
 
-		$this->assertContains($toTest,$this->html,"testing tables");
+		$this->assertStringContainsString($toTest,$this->html,"testing tables");
 	}
 
 	public function testsetConfiguration(){
