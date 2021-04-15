@@ -12,23 +12,34 @@ date_default_timezone_set("Europe/Berlin");
 
 class OphirTest extends \PHPUnit\Framework\TestCase{
 
-	protected function setUp(): void {
-		$this->ophir = new Ophir();
-
-		// enable everything
-		$this->ophir->setConfiguration(Ophir::HEADINGS,		Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::LISTS,		Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::TABLE,		Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::FOOTNOTE,		Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::LINK,			Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::IMAGE,		Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::ANNOTATION, 	Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::TOC,			Ophir::ALL);
-
-		$this->html = $this->ophir->odt2html(__DIR__."/test.odt");
-
-		// ignore line breaks in tests
-		$this->html = str_replace(array("\r", "\n"), "", $this->html);
+	public function run(\PHPUnit\Framework\TestResult $result = NULL): \PHPUnit\Framework\TestResult {
+		if ($result === NULL) {
+			$result = $this->createResult();
+		}
+		$configurations = array(
+			array(
+				Ophir::HEADINGS   => Ophir::ALL,
+				Ophir::LISTS      => Ophir::ALL,
+				Ophir::TABLE      => Ophir::ALL,
+				Ophir::FOOTNOTE   => Ophir::ALL,
+				Ophir::LINK       => Ophir::ALL,
+				Ophir::IMAGE      => Ophir::ALL,
+				Ophir::ANNOTATION => Ophir::ALL,
+				Ophir::TOC        => Ophir::ALL,
+			),
+		);
+		foreach ($configurations as $configuration) {
+			$this->currentConfiguration = $configuration;
+			$this->ophir = new Ophir();
+			foreach ($configuration as $option => $value) {
+				$this->ophir->setConfiguration($option, $value);
+			}
+			$this->html = $this->ophir->odt2html(__DIR__."/test.odt");
+			// ignore line breaks in tests
+			$this->html = str_replace(array("\r", "\n"), "", $this->html);
+			$result->run($this);
+		}
+		return $result;
 	}
 
 	public function testSimpleText(){
