@@ -6,104 +6,225 @@
  * Time: 20:10
  */
 namespace lovasoa;
-include("src/Ophir.php");
-date_default_timezone_set("Europe/Berlin");
-
+require_once(__DIR__ . "/../src/Ophir.php");
 
 class OphirTest extends \PHPUnit\Framework\TestCase{
 
-	public function run(\PHPUnit\Framework\TestResult $result = NULL): \PHPUnit\Framework\TestResult {
-		if ($result === NULL) {
-			$result = $this->createResult();
-		}
-		$configurations = array(
-			array(
-				Ophir::HEADINGS   => Ophir::ALL,
-				Ophir::LISTS      => Ophir::ALL,
-				Ophir::TABLE      => Ophir::ALL,
-				Ophir::FOOTNOTE   => Ophir::ALL,
-				Ophir::LINK       => Ophir::ALL,
-				Ophir::IMAGE      => Ophir::ALL,
-				Ophir::ANNOTATION => Ophir::ALL,
-				Ophir::TOC        => Ophir::ALL,
-			),
-		);
-		foreach ($configurations as $configuration) {
-			$this->currentConfiguration = $configuration;
-			$this->ophir = new Ophir();
-			foreach ($configuration as $option => $value) {
-				$this->ophir->setConfiguration($option, $value);
+	protected $configurationsData;
+
+	protected function addOptionCombinations($currentCombinations, $option, $values){
+		$result = array();
+		if ($currentCombinations) {
+			foreach ($currentCombinations as $combination) {
+				foreach ($values as $value) {
+					$result[] = $combination + array($option => $value);
+				}
 			}
-			$this->html = $this->ophir->odt2html(__DIR__."/test.odt");
-			// ignore line breaks in tests
-			$this->html = str_replace(array("\r", "\n"), "", $this->html);
-			$result->run($this);
+		} else {
+			foreach ($values as $value) {
+				$result[] = array($option => $value);
+			}
 		}
 		return $result;
 	}
 
-	public function testSimpleText(){
-		$this->assertStringContainsString("<p>This is a simple text Paragraph</p>",$this->html, "testing simple Text");
+	protected function getOutput($configuration) {
+		$ophir = new Ophir();
+		foreach ($configuration as $option => $value) {
+			$ophir->setConfiguration($option, $value);
+		}
+		$output = $ophir->odt2html(__DIR__."/test.odt");
+		unset($ophir);
+		// ignore line breaks in Ophir output
+		return str_replace(array("\r", "\n"), "", $output);
 	}
 
-	public function testTableOfContents(){
-		$this->assertStringContainsString("Table of Contents",$this->html);
+	protected function formatMessage($message, $configuration) {
+		$valueNameByValue = array(0 => 'None', 1 => 'Simple', 2 => 'All');
+		$parts = array();
+		foreach ($configuration as $option => $value) {
+			$parts[] = "$option=$valueNameByValue[$value]";
+		}
+		return "$message (" . implode(', ', $parts) . ")";
 	}
 
-	public function testFormattedText(){
-		$this->assertStringContainsString("This is a <strong>bold text</strong>",	$this->html, "testing bold Text");
-		$this->assertStringContainsString("This is a <em>italic text</em>",			$this->html, "testing italic Text");
-		$this->assertStringContainsString("This is a <u>underlined text</u>",		$this->html, "testing underlined Text");
+	protected function doThreeWayConfigBasedTest($configuration, $option, $name, $sample){
+		$output = $this->getOutput($configuration);
+		$all = str_replace(array("\n","\r","\t"), "", $sample);
+		$simple = strip_tags($all, '<p>');
 
-		$this->assertStringContainsString("This is a <em><strong>bold italic text</strong></em>",	$this->html, "testing bold italic Text");
-		$this->assertStringContainsString("This is a <strong><u>bold underlined text</u></strong>",	$this->html, "testing bold underlined Text");
-		$this->assertStringContainsString("This is a <em><u>italic underlined text</u></em>",		$this->html, "testing italic underlined Text");
+		$configValue = $configuration[Ophir::LISTS];
+		if ($configValue === Ophir::ALL) {
+			$this->assertStringContainsString($all, $output,
+				$this->formatMessage("$name (all)", $configuration));
+		} else if ($configValue === Ophir::SIMPLE) {
+			$this->assertStringContainsString($simple, $output,
+				$this->formatMessage("$name (simple)", $configuration));
+		} else {
+			$this->assertStringNotContainsString($all, $output,
+				$this->formatMessage("$name (none, part 1)", $configuration));
+			$this->assertStringNotContainsString($simple, $output,
+				$this->formatMessage("$name (none, part 2)", $configuration));
+		}
 	}
 
-	public function testOrderedLists(){
-		$toTest = "	<ol>
+	protected function doTwoWayConfigBasedTest($configuration, $option, $name, $sample){
+		$output = $this->getOutput($configuration);
+		$configValue = $configuration[$option];
+		if ($configValue === Ophir::ALL) {
+			$this->assertStringContainsString($sample, $output,
+				$this->formatMessage("$name (enabled)", $configuration));
+		} else {
+			$this->assertStringNotContainsString($sample, $output,
+				$this->formatMessage("$name (disabled)", $configuration));
+		}
+	}
+
+	public function configurationsDataProvider(){
+		if (!$this->configurationsData) {
+			$possibleOptions = array(Ophir::HEADINGS, Ophir::LISTS, Ophir::TABLE, Ophir::FOOTNOTE, Ophir::LINK, Ophir::IMAGE, Ophir::ANNOTATION, Ophir::TOC);
+			$possibleValues = array(Ophir::NONE, Ophir::SIMPLE, Ophir::ALL);
+			$configurations = array();
+			foreach ($possibleOptions as $option) {
+				$configurations = $this->addOptionCombinations($configurations, $option, $possibleValues);
+			}
+			foreach ($configurations as $configuration) {
+				// $output = $this->getOutput($configuration);
+				$this->configurationsData[] = array($configuration);
+			}
+		}
+		return $this->configurationsData;
+	}
+
+	/**
+	* @dataProvider configurationsDataProvider
+	*/
+	public function testSimpleText($configuration){
+		$output = $this->getOutput($configuration);
+		$this->assertStringContainsString("<p>This is a simple text Paragraph</p>", $output,
+			$this->formatMessage("Text Paragraph", $configuration));
+	}
+
+	/**
+	* @dataProvider configurationsDataProvider
+	*/
+	public function testTableOfContents($configuration){
+		$output = $this->getOutput($configuration);
+		$configValue = $configuration[Ophir::TOC];
+		if ($configValue === Ophir::ALL || $configValue === Ophir::SIMPLE) {
+			$this->assertStringContainsString("Table of Contents", $output,
+				$this->formatMessage("TOC (enabled)", $configuration));
+		} else {
+			$this->assertStringNotContainsString("Table of Contents", $output,
+				$this->formatMessage("TOC (disabled)", $configuration));
+		}
+	}
+
+	/**
+	* @dataProvider configurationsDataProvider
+	*/
+	public function testFormattedText($configuration){
+		$output = $this->getOutput($configuration);
+		$this->assertStringContainsString("This is a <strong>bold text</strong>", $output,
+			$this->formatMessage("Bold Text", $configuration));
+		$this->assertStringContainsString("This is a <em>italic text</em>", $output,
+			$this->formatMessage("Italic Text", $configuration));
+		$this->assertStringContainsString("This is a <u>underlined text</u>", $output,
+			$this->formatMessage("Underlined Text", $configuration));
+
+		$this->assertStringContainsString("This is a <em><strong>bold italic text</strong></em>", $output,
+			$this->formatMessage("Bold Italic Text", $configuration));
+		$this->assertStringContainsString("This is a <strong><u>bold underlined text</u></strong>", $output,
+			$this->formatMessage("Bold Underlined Text", $configuration));
+		$this->assertStringContainsString("This is a <em><u>italic underlined text</u></em>", $output,
+			$this->formatMessage("Italic Underlined Text", $configuration));
+	}
+
+	/**
+	* @dataProvider configurationsDataProvider
+	*/
+	public function testOrderedLists($configuration){
+		$sample = "	<ol>
 						<li><p>Ordered List</p></li>
 						<li><p>wow, so ordered </p></li>
 						<li><p>such number</p></li>
 					</ol>";
-		$toTest = str_replace(array("\n","\r","\t"), "", $toTest);
-		$this->assertStringContainsString($toTest,	$this->html, "testing ordered Lists");
+		$this->doThreeWayConfigBasedTest($configuration, Ophir::LISTS, "Ordered Lists", $sample);
 	}
 
-	public function testUnorderedLists(){
-		$toTest = "	<ul>
-						<li><p>unordered List</p></li>
-						<li><p>wow, so unordered</p></li>
-						<li><p>much messy</p></li>
-					</ul>";
-		$toTest = str_replace(array("\n","\r","\t"), "", $toTest);
-		$this->assertStringContainsString($toTest,	$this->html, "testing ordered Lists");
+	/**
+	* @dataProvider configurationsDataProvider
+	*/
+	public function testUnorderedLists($configuration){
+		$sample = "	<ol>
+						<li><p>Ordered List</p></li>
+						<li><p>wow, so ordered </p></li>
+						<li><p>such number</p></li>
+					</ol>";
+		$this->doThreeWayConfigBasedTest($configuration, Ophir::LISTS, "Unordered Lists", $sample);
 	}
 
-	public function testImage(){
-		$this->assertStringContainsString(base64_encode(file_get_contents(__DIR__."/image.jpg")),$this->html);
+	/**
+	* @dataProvider configurationsDataProvider
+	*/
+	public function testImage($configuration){
+		// TODO: test with Ophir::IMAGEFOLDER set to some reasonable value too
+		$sample = base64_encode(file_get_contents(__DIR__."/image.jpg"));
+		$this->doTwoWayConfigBasedTest($configuration, Ophir::IMAGE, "Image", $sample);
 	}
 
-	public function testLink(){
-		$this->assertStringContainsString('This is a <a href="https://github.com/lovasoa/ophir.php">link</a>',$this->html);
+	/**
+	* @dataProvider configurationsDataProvider
+	*/
+	public function testLink($configuration){
+		$this->doTwoWayConfigBasedTest($configuration, Ophir::LINK, "Link", 'This is a <a href="https://github.com/lovasoa/ophir.php">link</a>');
 	}
 
-	public function testAnnotation(){
-		$this->assertStringContainsString('This is a annotation',$this->html);
+	/**
+	* @dataProvider configurationsDataProvider
+	*/
+	public function testAnnotation($configuration){
+		$output = $this->getOutput($configuration);
+		$this->assertStringContainsString('This is a annotation', $output);
 	}
 
-	public function testFootnote(){
-		$this->assertStringContainsString('This is a footnote', $this->html);
+	/**
+	* @dataProvider configurationsDataProvider
+	*/
+	public function testFootnote($configuration){
+		$output = $this->getOutput($configuration);
+		$this->assertStringContainsString('This is a footnote', $output);
 	}
 
-	public function testHeadings(){
-		$this->assertStringContainsString("<h1>This is a h1</h1>",$this->html,"testing h1");
-		$this->assertStringContainsString("<h2>This is a h2</h2>",$this->html,"testing h2");
-		$this->assertStringContainsString("<h3>This is a h3</h3>",$this->html,"testing h3");
+	/**
+	* @dataProvider configurationsDataProvider
+	*/
+	public function testHeadings($configuration){
+		$output = $this->getOutput($configuration);
+		$configValue = $configuration[Ophir::HEADINGS];
+		if ($configValue === Ophir::ALL) {
+			$this->assertStringContainsString("<h1>This is a h1</h1>", $output, "testing h1");
+			$this->assertStringContainsString("<h2>This is a h2</h2>", $output, "testing h2");
+			$this->assertStringContainsString("<h3>This is a h3</h3>", $output, "testing h3");
+		} else if ($configValue === Ophir::SIMPLE) {
+			$this->assertStringContainsString("This is a h1", $output, "testing h1");
+			$this->assertStringContainsString("This is a h2", $output, "testing h2");
+			$this->assertStringContainsString("This is a h3", $output, "testing h3");
+			$this->assertStringNotContainsString("<h1>This is a h1</h1>",$output, "testing h1");
+			$this->assertStringNotContainsString("<h2>This is a h2</h2>",$output, "testing h2");
+			$this->assertStringNotContainsString("<h3>This is a h3</h3>",$output, "testing h3");
+		} else {
+			$this->assertStringNotContainsString("This is a h1", $output, "testing h1");
+			$this->assertStringNotContainsString("This is a h2", $output, "testing h2");
+			$this->assertStringNotContainsString("This is a h3", $output, "testing h3");
+		}
 	}
 
-	public function testTables(){
-		$toTest = "	<table cellspacing=0 cellpadding=0 border=1>
+	/**
+	* @dataProvider configurationsDataProvider
+	*/
+	public function testTables($configuration){
+		$sample = "	<table cellspacing=0 cellpadding=0 border=1>
 						<tr>
 							<td><p>So</p></td>
 							<td><p>Much</p></td>
@@ -120,36 +241,19 @@ class OphirTest extends \PHPUnit\Framework\TestCase{
 							</td><td><p>File</p></td>
 						</tr>
 					</table>";
-		$toTest = str_replace(array("\n","\r","\t"), "", $toTest);
-
-		$this->assertStringContainsString($toTest,$this->html,"testing tables");
+		$this->doThreeWayConfigBasedTest($configuration, Ophir::TABLE, "Tables", $sample);
 	}
 
-	public function testsetConfiguration(){
-		$this->ophir->setConfiguration(Ophir::HEADINGS,		Ophir::NONE);
-		$this->ophir->setConfiguration(Ophir::LISTS,		Ophir::NONE);
-		$this->ophir->setConfiguration(Ophir::TABLE,		Ophir::NONE);
-		$this->ophir->setConfiguration(Ophir::FOOTNOTE,		Ophir::NONE);
-		$this->ophir->setConfiguration(Ophir::LINK,			Ophir::NONE);
-		$this->ophir->setConfiguration(Ophir::IMAGE,		Ophir::NONE);
-		$this->ophir->setConfiguration(Ophir::ANNOTATION, 	Ophir::NONE);
-		$this->ophir->setConfiguration(Ophir::TOC,			Ophir::NONE);
-
-		foreach($this->ophir->getConfiguration() as $name=>$value){
-			$this->assertEquals(Ophir::NONE,$value);
+	/**
+	* @dataProvider configurationsDataProvider
+	*/
+	public function testsetConfiguration($configuration){
+		$ophir = new Ophir();
+		foreach ($configuration as $option => $value) {
+			$ophir->setConfiguration($option, $value);
 		}
-
-		$this->ophir->setConfiguration(Ophir::HEADINGS,		Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::LISTS,		Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::TABLE,		Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::FOOTNOTE,		Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::LINK,			Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::IMAGE,		Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::ANNOTATION, 	Ophir::ALL);
-		$this->ophir->setConfiguration(Ophir::TOC,			Ophir::ALL);
-
-		foreach($this->ophir->getConfiguration() as $name=>$value){
-			$this->assertEquals(Ophir::ALL,$value);
+		foreach($ophir->getConfiguration() as $option => $value){
+			$this->assertEquals($configuration[$option], $value);
 		}
 	}
 
