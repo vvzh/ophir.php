@@ -311,10 +311,12 @@ class Ophir
 						break;
 
 					case "text:list":
-						if(!empty($odtStyles[$xml->getAttribute("text:style-name")])){
-							$translation_table["text:list"] = $odtStyles[$xml->getAttribute("text:style-name")];
-						} else {
-							$translation_table["text:list"] = "ul";
+						if (isset($translation_table["text:list"]) && $translation_table["text:list"] !== FALSE) {
+							if(!empty($odtStyles[$xml->getAttribute("text:style-name")])){
+								$translation_table["text:list"] = $odtStyles[$xml->getAttribute("text:style-name")];
+							} else {
+								$translation_table["text:list"] = "ul";
+							}
 						}
 						// No break statement intended
 
