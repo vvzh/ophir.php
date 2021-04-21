@@ -320,6 +320,14 @@ class Ophir
 						}
 						// No break statement intended
 
+					case "table:table-cell":
+						$rowsSpanned = $xml->getAttribute("table:number-rows-spanned");
+						$colsSpanned = $xml->getAttribute("table:number-columns-spanned");
+						$rowSpanSuffix = $rowsSpanned ? " rowspan=\"$rowsSpanned\"" : '';
+						$colSpanSuffix = $colsSpanned ? " colspan=\"$colsSpanned\"" : '';
+						$translation_table["table:table-cell"] = "td$colSpanSuffix$rowSpanSuffix";
+						// No break statement intended
+
 					default:
 						if (array_key_exists($xml->name, $translation_table)) {
 							if ($translation_table[$xml->name]===FALSE) {
